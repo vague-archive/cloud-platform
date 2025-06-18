@@ -1,0 +1,15 @@
+<head>
+  <meta charSet="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  @if (@Current.Principal.IsLoggedIn)
+  {
+  <meta name="userId" content="@Current.Principal.Id" />
+  <meta name="userName" content="@Current.Principal.Name" />
+  <meta name="userEmail" content="@Current.Principal.Email" />
+  }
+  <meta name="csrf-token" content="@Current.CsrfToken" />
+  <title>@Current.Page.Title</title>
+  <link href="/main.css" rel="stylesheet" asp-append-version="@Current.IsProduction">
+  <script defer src="/main.js" asp-append-version="@Current.IsProduction"></script>
+  <script defer src="/vendor.js" asp-append-version="@Current.IsProduction"></script>
+</head>

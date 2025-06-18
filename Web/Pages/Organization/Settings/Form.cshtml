@@ -1,0 +1,82 @@
+@model OrganizationSettingsPage
+@{
+  var xData = new {
+    edit = Current.Page.HasErrors,
+    name = Model.Command.Name,
+    oldSlug = Model.Command.Slug,
+    newSlug = Model.Command.Slug,
+  };
+}
+
+<form class="max-w-128"
+  method="post"
+  hx-post
+  hx-page="/Organization/Settings"
+  hx-page-org="@Current.Organization.Slug"
+  hx-disabled-elt="input, select, button"
+  hx-target="this"
+  x-data-from="xData"
+>
+  <div x-show="!edit">
+    <field>
+      <label>Name:</label>
+      <div>@Model.Command.Name</div>
+    </field>
+    <field>
+      <label>Identity:</label>
+      <div class="font-bold flex">@Model.Command.Slug</div>
+    </field>
+    <div class="mt-4">
+      <button type="button"
+        class="btn-primary"
+        x-on:click="edit=true">
+        edit
+      </button>
+    </div>
+  </div>
+
+  <div
+    x-cloak="true"
+    x-show="edit"
+    x-trap="edit"
+    x-on:keydown.escape="$refs.cancel.click()">
+
+    <div class="border-2 border-warn-100 bg-warn-50 text-large text-warn-900 p-4 mb-4">
+      <b>WARNING</b>:
+      Changing the name of your organization also changes the identity used in URL's and you will have to update
+      your automated integrations (if any) with the new identity.
+    </div>
+
+    <field>
+      <label asp-for="Command.Name">Name:</label>
+      <field-input>
+        <input asp-for="Command.Name" x-model="name" x-on:input="newSlug = lib.slugify(name)" data-1p-ignore />
+      </field-input>
+      <field-error for="Command.Name" model="Model"></field-error>
+    </field>
+
+    <field>
+      <label asp-for="Command.Slug">Identity:</label>
+      <div class="font-bold flex">
+        <span x-text="newSlug"></span>
+        <input asp-for="Command.Slug" x-model="newSlug" type="hidden" />
+        <span x-show="newSlug !== oldSlug" class="text-danger pl-4">(CHANGED)</span>
+      </div>
+      <field-error for="Command.Slug" model="Model"></field-error>
+    </field>
+
+    <div class="mt-4 flex gap-2 justify-end">
+      <button type="button" class="btn-secondary"
+        hx-get
+        hx-page="/Organization/Settings"
+        hx-page-handler="Cancel"
+        hx-page-org="@Current.Organization.Slug"
+        x-ref="cancel">
+        cancel
+      </button>
+      <button type="submit" class="btn-primary">
+        save
+      </button>
+    </div>
+  </div>
+</form>

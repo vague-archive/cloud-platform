@@ -1,0 +1,19 @@
+@model Share.Branch;
+@{
+  var isPinned = Model.IsPinned;
+  var title = isPinned ? "unpin" : "pin this build (so that it never expires)";
+  var icon = isPinned ? "iconoir-pin-solid -rotate-45" : "iconoir-pin";
+}
+
+<button
+  title="@title"
+  hx-post
+  hx-page="/Game/Share"
+  hx-page-handler="PinBranch"
+  hx-page-org="@Current.Organization.Slug"
+  hx-page-game="@Current.Game.Slug"
+  hx-page-slug="@Model.Slug"
+  hx-page-isPinned="@(!isPinned)"
+  hx-target="this">
+  <i class="text-20 @icon"></i>
+</button>

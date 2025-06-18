@@ -1,0 +1,54 @@
+<card qa="anonymous">
+  <card-header>
+    <card-title>Join Organization</card-title>
+  </card-header>
+  <card-body class="p-12 pb-16">
+
+    <p>
+      You have been invited to join the <b qa="org-name">@Model.Organization.Name</b> team
+      and make some great games.
+    </p>
+
+    <div class="mt-8 flex flex-wrap gap-4 justify-center">
+      <form
+        if="Model.CanGitHubAuth"
+        qa="github"
+        x-data
+        hx-post
+        hx-page="Join/Provider"
+        hx-page-provider="github"
+        hx-page-handler="signup">
+        <input type="hidden" name="token" value="@Model.Token"></input>
+        <input type="hidden" name="timezone" x-bind:value="lib.timeZone()"></input>
+        <input type="hidden" name="locale" x-bind:value="lib.locale()"></input>
+        <button type="submit" class="btn btn-secondary">
+          <i class="iconoir-github text-24"></i> Sign in with GitHub
+        </button>
+      </form>
+
+      <form
+        if="Model.CanDiscordAuth"
+        qa="discord"
+        x-data
+        hx-post
+        hx-page="Join/Provider"
+        hx-page-provider="discord"
+        hx-page-handler="signup">
+        <input type="hidden" name="token" value="@Model.Token"></input>
+        <input type="hidden" name="timezone" x-bind:value="lib.timeZone()"></input>
+        <input type="hidden" name="locale" x-bind:value="lib.locale()"></input>
+        <button class="btn btn-secondary">
+          <i class="iconoir-discord text-24"></i> Sign in with Discord
+        </button>
+      </form>
+    </div>
+
+    @{
+      var message = Current.Flash.GetString("message");
+    }
+    <div if="message is not null" class="max-w-96 mx-auto border border-danger-500 bg-danger-50 p-4 mt-8">
+      <p qa="flash">@message</p>
+    </div>
+
+  </card-body>
+</card>

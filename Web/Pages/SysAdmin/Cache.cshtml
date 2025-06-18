@@ -1,0 +1,103 @@
+@model SysAdminController.CacheKeysModel
+@{
+  var downloads = Model.DownloadReleases;
+  var serves = Model.GameServe;
+  var stats = Model.SysAdminStats;
+  var blocked = Model.FirewallBlocked;
+  var safeTrash = Model.SafeTrash;
+  var unsafeTrash = Model.UnsafeTrash;
+}
+
+<card qa="sysadmin-cache">
+  <card-header>
+    <card-title>
+      Cache Keys
+    </card-title>
+  </card-header>
+  <card-body>
+      <table>
+      @foreach (var key in serves)
+      {
+        <tr>
+          <td class="px-2">@key.Item1</td>
+          <td class="px-2">@key.Item2</td>
+          <td class="px-2">
+            <a class="link" hx-delete=@Url.SysAdminCacheDelete(@key.Item1)>
+              delete
+            </a>
+          </td>
+        </tr>
+      }
+      @foreach (var key in downloads)
+      {
+        <tr>
+          <td class="px-2" colspan="2">@key</td>
+          <td class="px-2">
+            <a class="link" hx-delete=@Url.SysAdminCacheDelete(@key)>
+              delete
+            </a>
+          </td>
+        </tr>
+      }
+      @foreach (var key in stats)
+      {
+        <tr>
+          <td class="px-2" colspan="2">@key</td>
+          <td class="px-2">
+            <a class="link" hx-delete=@Url.SysAdminCacheDelete(@key)>
+              delete
+            </a>
+          </td>
+        </tr>
+      }
+      @foreach (var key in blocked)
+      {
+        <tr>
+          <td class="px-2" colspan="2">@key</td>
+          <td class="px-2">
+            <a class="link" hx-delete=@Url.SysAdminCacheDelete(@key)>
+              delete
+            </a>
+          </td>
+        </tr>
+      }
+      </table>
+  </card-body>
+</card>
+
+<card qa="sysadmin-trash" class="mt-8">
+  <card-header>
+    <card-title>
+      Trash Keys
+    </card-title>
+  </card-header>
+  <card-body>
+      <table>
+      @foreach (var key in safeTrash)
+      {
+        <tr hx-target="this">
+          <td class="px-2">@key.Item1</td>
+          <td class="px-2">@key.Item2</td>
+          <td class="px-2">
+            <a class="link" hx-delete=@Url.SysAdminTrashDelete(@key.Item1)>
+              delete
+            </a>
+          </td>
+        </tr>
+      }
+      @foreach (var key in unsafeTrash)
+      {
+        <tr hx-target="this">
+          <td class="px-2">@key.Item1</td>
+          <td class="px-2">@key.Item2</td>
+          <td class="px-2">
+            <span class="text-danger">
+              manual delete required
+            </span>
+          </td>
+        </tr>
+      }
+      </table>
+  </card-body>
+</card>
+

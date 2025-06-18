@@ -1,0 +1,10 @@
+@model ShareGamePage
+<div>
+  <h4>This @Format.Enum(Current.Game.Purpose) has not been shared yet</h4>
+  <a class="btn btn-primary mt-4"
+    asp-page="/Game/Share/Help"
+    asp-route-org="@Current.Organization.Slug"
+    asp-route-game="@Current.Game.Slug">
+    Learn how to share your first @Format.Enum(Current.Game.Purpose)
+  </a>
+</div>

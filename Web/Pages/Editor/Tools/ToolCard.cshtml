@@ -1,0 +1,47 @@
+@model Account.Game
+@{
+  var tool = Model;
+  var org = tool.Organization!;
+  var branches = tool.Branches!;
+  var empty = branches.Count == 0;
+  var multiple = branches.Count > 1;
+}
+
+<div class="flex items-center">
+  <div class="flex-1">
+    <h4 class="mb-2">@tool.Name</h4>
+    <p class="mb-1 text-gray-500">@tool.Description</p>
+    <p class="text-gray">by @org.Name</p>
+  </div>
+  <div class="text-40">
+    📝  <!-- TODO: add optional emoji in deploy DB -->
+  </div>
+</div>
+
+@if (empty)
+{
+  <div class="border-2 border-warn-100 bg-warn-50 text-large text-warn-900 p-2 mt-2">
+    This tool has not been deployed yet
+  </div>
+}
+
+@if (multiple)
+{
+  <div class="border-2 border-warn-100 bg-warn-50 text-large text-warn-900 p-2 mt-2">
+    This tool has multiple versions:
+    <ul class="space-y-1 p-2">
+      @foreach (var branch in branches)
+      {
+        var deploy = branch.ActiveDeploy!;
+        <li>
+          <a href="@Url.ServeGame(org, tool, branch)" class="link" target="_tool">
+            <span>@branch.Slug</span>
+            <span class="text-primary-300 pl-4">
+              released @Format.Date(deploy.DeployedOn)
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+}

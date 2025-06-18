@@ -1,0 +1,18 @@
+{
+  "*.cshtml.cs": {
+    "type": "page-behind",
+    "alternate": "{}.cshtml"
+  },
+  "*.cshtml": {
+    "type": "page",
+    "alternate": "{}.cshtml.cs"
+  },
+  "Test/*Test.cs": {
+    "type": "test",
+    "alternate": "{}.cs"
+  },
+  "*.cs": {
+    "type": "source",
+    "alternate": "Test/{}Test.cs"
+  }
+}

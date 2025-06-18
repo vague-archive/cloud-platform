@@ -1,0 +1,18 @@
+@model SysAdminController.PageModel
+@{
+  Current.Page.Title = "System Administration";
+}
+
+<div class="border-2 border-danger-100 bg-danger-50 text-large text-danger-900 p-4 mb-8">
+  <b>WARNING</b>: As a sysadmin you have <b>full access to all organizations</b>....<br />
+  ...but with great power, comes great responsibility! <br />
+  Be careful, look but dont touch!
+</div>
+
+<div class="space-y-8">
+  <partial name="SysAdmin/_Stats"           model=@Model.Stats />
+  <partial name="SysAdmin/_RecentBranches"  model=@Model />
+  <partial name="SysAdmin/_ExpiredBranches" model=@Model />
+  <partial name="SysAdmin/_Organizations"   model=@Model />
+  <partial name="SysAdmin/_Experiment"      model=@Model />
+</div>

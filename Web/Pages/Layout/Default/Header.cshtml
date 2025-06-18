@@ -1,0 +1,28 @@
+<nav class="h-10 flex items-center justify-between bg-light border-b border-dark z-1">
+
+  <a
+    asp-page="/Home"
+    class="self-stretch flex items-center justify-center w-10 hover:bg-gray-100">
+    <void-logo></void-logo>
+  </a>
+
+  <span class="flex-1 flex items-center px-2">
+    @if (Current.Page.HasHeaderPartial)
+    {
+      <partial name="@Current.Page.HeaderPartial" />
+    }
+    else if (Current.Page.HasHeaderTitle)
+    {
+      @Current.Page.HeaderTitle
+    }
+    else
+    {
+      @Current.Page.Title
+    }
+  </span>
+
+  <div class="pr-2">
+    <partial name="Layout/Default/Header/UserMenu"></partial>
+  </div>
+
+</nav>

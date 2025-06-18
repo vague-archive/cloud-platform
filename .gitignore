@@ -1,0 +1,11 @@
+bin
+obj
+.env
+.cover
+.filestore
+.keys
+node_modules
+Web/wwwroot/main.css
+Web/wwwroot/main.js
+Web/wwwroot/serve.js
+Web/wwwroot/vendor.js

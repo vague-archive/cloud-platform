@@ -1,0 +1,23 @@
+@model SysAdminController.PageModel
+@{
+  var orgs = Model.Organizations;
+}
+
+<card qa="sysadmin-organizations">
+  <card-header>
+    <card-title>Organizations</card-title>
+  </card-header>
+  <card-body>
+    <div class="divide-y">
+      @foreach (var org in orgs)
+      {
+        <a class="block px-1 py-2 hover:bg-gray-100 link font-bold"
+          qa="organization"
+          asp-page="/Organization"
+          asp-route-org="@org.Slug">
+          @org.Name
+        </a>
+      }
+    </div>
+  </card-body>
+</card>

@@ -1,0 +1,121 @@
+@model OrganizationGamesPage
+@{
+  var xData = new {
+    add = new {
+    active = Current.Page.HasErrors,
+      name = Model.CreateGame.Name,
+      slug = Model.CreateGame.Slug,
+      description = Model.CreateGame.Description
+    },
+  };
+  var gameLabel = Format.Enum(Model.Purpose);
+  var gamesLabel = gameLabel.Pluralize();
+  var GameLabel = gameLabel.Pascalize();
+  var GamesLabel = gamesLabel.Pascalize();
+  var pageName = $"/Organization/{GamesLabel}";
+}
+
+<card
+  qa="games"
+  x-data-from="xData">
+
+  <card-header>
+    <card-title>
+      <span x-text="add.active ? 'Add @GameLabel' : '@GamesLabel'"></span>
+    </card-title>
+    <card-header-rhs x-show="!add.active">
+      <button class="btn-primary" x-on:click="add.active=true">Add @GameLabel</button>
+    </card-header-rhs>
+  </card-header>
+  <card-body>
+
+    <div x-show="!add.active" if="!@Model.HasActiveGames">
+      There are no @gamesLabel in this organization.
+    </div>
+
+    <div x-show="!add.active" class="divide-y" qa="active-games">
+      @foreach (var game in Model.ActiveGames)
+      {
+        <a class="block p-4 hover:bg-gray-100" qa="game-link"
+          asp-page="/Game"
+          asp-route-org="@Current.Organization.Slug"
+          asp-route-game="@game.Slug">
+          <span class="link font-bold">
+            @game.Name
+          </span>
+          <span if="game.Description is not null" class="ml-4 text-gray no-underline">
+            @game.Description
+          </span>
+        </a>
+      }
+    </div>
+
+    <details x-show="!add.active" if="Model.HasArchivedGames" class="mt-8">
+      <summary class="link focus:ring-0">
+        Show Archived @GamesLabel
+      </summary>
+      @foreach (var game in Model.ArchivedGames)
+      {
+        <a class="block p-4 hover:bg-gray-100"
+          asp-page="/Game"
+          asp-route-org="@Current.Organization.Slug"
+          asp-route-game="@game.Slug">
+          <span class="link font-bold">
+            @game.Name
+          </span>
+          <span if="game.Description is not null" class="ml-4 text-gray no-underline">
+            @game.Description
+          </span>
+        </a>
+      }
+    </details>
+
+    <form
+      x-cloak="true"
+      x-show="add.active"
+      x-trap="add.active"
+      x-on:keydown.escape="$refs.cancel.click()"
+      hx-post
+      hx-page="@pageName"
+      hx-page-org="@Current.Organization.Slug"
+      hx-page-handler="CreateGame"
+      hx-disabled-elt="input,button" 
+      hx-target="closest card"
+      class="mt-2 max-w-128"
+    >
+      <input asp-for="CreateGame.Purpose" type="hidden"></input>
+
+      <field>
+        <label asp-for="CreateGame.Name">Name:</label>
+        <field-input>
+          <input asp-for="CreateGame.Name" x-model="add.name" autoComplete="off" data-1p-ignore="true" />
+        </field-input>
+        <field-error for="CreateGame.Name" model="Model"></field-error>
+      </field>
+
+      <field>
+        <label asp-for="CreateGame.Description">Description:</label>
+        <field-input>
+          <textarea asp-for="CreateGame.Description" x-model="add.description" autoComplete="off" data-1p-ignore="true">
+          </textarea>
+        </field-input>
+        <field-error for="CreateGame.Description" model="Model"></field-error>
+      </field>
+
+      <form-buttons class="right">
+        <button type="button" class="btn-secondary"
+          hx-post
+          hx-page="@pageName"
+          hx-page-org="@Current.Organization.Slug"
+          hx-page-handler="CancelCreateGame"
+          x-ref="cancel">
+          cancel
+        </button>
+        <button type="submit" class="btn-primary">
+          save
+        </button>
+      </form-buttons>
+    </form>
+
+  </card-body>
+</card>

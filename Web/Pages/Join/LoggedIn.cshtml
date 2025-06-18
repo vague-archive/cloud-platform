@@ -1,0 +1,26 @@
+<form
+  qa = "loggedin"
+  hx-post
+  hx-page="/Join"
+  hx-page-handler="accept"
+  hx-page-token="@Model.Token"
+  >
+  <card>
+    <card-header>
+      <card-title>Join Organization</card-title>
+    </card-header>
+    <card-body class="p-12 pb-16">
+      <p>
+        Welcome <b qa="user-name">@Current.Principal.Name</b>,
+      </p>
+      <p>
+        You have been invited to join the <b qa="org-name">@Model.Organization.Name</b> team
+        and make some great games.
+      </p>
+    </card-body>
+    <card-buttons>
+      <button type="submit" class="btn-primary">Join</button>
+      <a asp-page="/Home"  class="btn-secondary">Cancel</a>
+    </card-buttons>
+  </card>
+</form>

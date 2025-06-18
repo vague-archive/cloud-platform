@@ -1,0 +1,59 @@
+@model ShareGamePage
+@{
+  var xData = new {
+    deleteBranch = false,
+  };
+}
+
+<card
+  x-data-from="xData"
+  hx-target="this">
+
+  <card-header>
+    <card-title>Shared Builds</card-title>
+    <card-header-rhs>
+      <a class="btn btn-primary"
+        asp-page="/Game/Share/Help"
+        asp-route-org="@Current.Organization.Slug"
+        asp-route-game="@Current.Game.Slug" boost="false">
+        Help
+      </a>
+    </card-header-rhs>
+  </card-header>
+
+  <card-body>
+    <p>
+      Your team has shared
+      @Format.Pluralize("versions", Model.Branches) of this game.
+      Click the link(s) below to playtest your games.
+    </p>
+    <div class="mt-2">
+      @foreach (var branch in Model.Branches)
+      {
+        var deploy = RuntimeAssert.Present(branch.ActiveDeploy);
+        var deployer = RuntimeAssert.Present(deploy.DeployedByUser);
+        <div class="flex items-center gap-2 p-1 hover:bg-gray-100">
+          <div class="w-32">
+            @Format.RecentDateTimeHtml(deploy.DeployedOn, Clock.Now)
+          </div>
+
+          <div class="flex flex-1">
+            <partial name="Share/GameLink" model="@branch" />
+            <span if="@Model.MultipleDeployers" class="text-gray ml-2 lowercase">(@deployer.Name)</span>
+          </div>
+
+          <div class="flex gap-3">
+            <partial name="Share/CopyButton" model="@branch" />
+            <partial name="Share/PasswordButton" model="@branch" />
+            <partial name="Share/PinButton" model="@branch" />
+            <partial name="Share/DeleteButton" model="@branch" />
+          </div>
+
+        </div>
+      }
+    </div>
+
+    <partial name="Share/DeleteDialog" />
+
+  </card-body>
+</card>

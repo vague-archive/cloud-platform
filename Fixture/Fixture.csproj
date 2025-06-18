@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Void.Platform.Fixture</AssemblyName>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Void.Platform.Domain" />
+    <Using Include="Void.Platform.Lib" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+    <ProjectReference Include="..\Lib\Lib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.1" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="NodaTime" Version="3.2.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,14 @@
+@page "/{org}/{game}/settings"
+@model GameSettingsPage
+@{
+  Current.Page.Title = $"Settings - {Current.Game.Name}";
+}
+
+@if (Current.Game.IsArchived)
+{
+  <partial name="Game/Settings/Archived" />
+}
+else
+{
+  <partial name="Game/Settings/Active" />
+}

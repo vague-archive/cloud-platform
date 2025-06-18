@@ -1,0 +1,567 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Provision the platform service
+
+Mappings:
+  config:
+    cache:
+      instancetype: cache.t4g.micro
+      engine: redis
+      family: redis7
+      version: 7.1
+      nodes: 1
+      maintenance: "sun:08:00-sun:12:00"
+
+Parameters:
+  Prefix:
+    Description: Name Prefix
+    Type: String
+    Default: platform
+  GitHubOpenIDConnectProviderArn:
+    Description: IAM GitHub OIDC Provider
+    Type: String
+    Default: arn:aws:iam::339712894694:oidc-provider/token.actions.githubusercontent.com
+  FileStoreBucket:
+    Description: FileStore S3 Backup Bucket
+    Type: String
+    Default: void-cloud
+
+Resources:
+
+  #=======================
+  # SECRETS
+  #=======================
+
+  SecretEncryptKey:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "encrypt-key" ] ]
+      Description: "ENCRYPT_KEY"
+
+  SecretSigningKey:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "signing-key" ] ]
+      Description: "SIGNING_KEY"
+
+  SecretDatabaseUrl:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "database-url" ] ]
+      Description: "DATABASE_URL"
+
+  SecretRedisCacheUrl:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "redis-cache-url" ] ]
+      Description: "REDIS_CACHE_URL"
+
+  SecretGitHubClientId:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "github-client-id" ] ]
+      Description: "GITHUB_CLIENT_ID"
+
+  SecretGitHubClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "github-client-secret" ] ]
+      Description: "GITHUB_CLIENT_SECRET"
+
+  SecretGitHubApiToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "github-api-token" ] ]
+      Description: "GITHUB_API_TOKEN"
+
+  SecretDiscordClientId:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "discord-client-id" ] ]
+      Description: "DISCORD_CLIENT_ID"
+
+  SecretDiscordClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "discord-client-secret" ] ]
+      Description: "DISCORD_CLIENT_SECRET"
+
+  SecretPapertrailToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "papertrail-token" ] ]
+      Description: "PAPERTRAIL_TOKEN"
+
+  SecretSentryEndpoint:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "sentry-endpoint" ] ]
+      Description: "SENTRY_ENDPOINT"
+
+  SecretPostmarkApiToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "postmark-api-token" ] ]
+      Description: "POSTMARK_API_TOKEN"
+
+  #=======================
+  # IAM ROLES
+  #=======================
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ '-', [ !Ref Prefix, "github-actions-role" ] ]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOpenIDConnectProviderArn
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - "repo:vaguevoid/cloud-platform:*"
+      Policies:
+        - PolicyName: !Join [ '-', [ !Ref Prefix, "github-actions-policy" ] ]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ecr:GetAuthorizationToken"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:BatchGetImage"
+                  - "ecr:CompleteLayerUpload"
+                  - "ecr:InitiateLayerUpload"
+                  - "ecr:PutImage"
+                  - "ecr:UploadLayerPart"
+                Resource:
+                  - !GetAtt Repository.Arn
+              - Effect: Allow
+                Action:
+                  - "ecs:RegisterTaskDefinition"
+                  - "ecs:DescribeTaskDefinition"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "ecs:DescribeServices"
+                  - "ecs:UpdateService"
+                Resource: !Ref Service
+              - Effect: Allow
+                Action:
+                  - "ecs:TagResource"
+                Resource:
+                  - !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${Prefix}:*"
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource:
+                  - !GetAtt ExecutionRole.Arn
+                  - !GetAtt TaskRole.Arn
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ '-', [ !Ref Prefix, "execution-role" ] ]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+      Policies:
+        - PolicyName: !Join [ '-', [ !Ref Prefix, "secrets" ] ]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Resource:
+                  - !Ref SecretEncryptKey
+                  - !Ref SecretSigningKey
+                  - !Ref SecretDatabaseUrl
+                  - !Ref SecretRedisCacheUrl
+                  - !Ref SecretGitHubClientId
+                  - !Ref SecretGitHubClientSecret
+                  - !Ref SecretGitHubApiToken
+                  - !Ref SecretDiscordClientId
+                  - !Ref SecretDiscordClientSecret
+                  - !Ref SecretPapertrailToken
+                  - !Ref SecretSentryEndpoint
+                  - !Ref SecretPostmarkApiToken
+                Action:
+                  - "secretsmanager:GetSecretValue"
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ '-', [ !Ref Prefix, "task-role" ] ]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+      Policies:
+        - PolicyName: !Join [ '-', [ !Ref Prefix, "task-policy" ] ]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "efs:ClientMount"
+                  - "efs:ClientWrite"
+                  - "efs:ClientRootAccess"
+                Resource:
+                  - !ImportValue "platform-file-system-arn"
+                  - !GetAtt KeysAccessPoint.Arn
+                  - !GetAtt PlatformAccessPoint.Arn
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                  - "s3:ListBucket"
+                Resource:
+                  - !Sub "arn:aws:s3:::${FileStoreBucket}"
+                  - !Sub "arn:aws:s3:::${FileStoreBucket}/*"
+
+  #=======================
+  # EFS ACCESS POINTS
+  #=======================
+
+  KeysAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !ImportValue "platform-file-system"
+      PosixUser:
+        Uid: "1000"
+        Gid: "1000"
+      RootDirectory:
+        Path: "/keys"
+        CreationInfo:
+          OwnerUid: "1000"
+          OwnerGid: "1000"
+          Permissions: "755"
+
+  PlatformAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !ImportValue "platform-file-system"
+      PosixUser:
+        Uid: "1000"
+        Gid: "1000"
+      RootDirectory:
+        Path: "/platform"
+        CreationInfo:
+          OwnerUid: "1000"
+          OwnerGid: "1000"
+          Permissions: "755"
+
+  #=======================
+  # ECS TASK and SERVICE
+  #=======================
+
+  Repository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref Prefix
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${Prefix}"
+      RetentionInDays: 14
+
+  Task:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref Prefix
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 2048
+      Memory: 4096
+      NetworkMode: awsvpc
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: "web"
+          Image: !Join [ ':', [ !GetAtt Repository.RepositoryUri, "latest" ] ]
+          Essential: true
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+          MountPoints:
+            - ContainerPath: "/mnt/keys"
+              SourceVolume: "keys"
+            - ContainerPath: "/mnt/platform"
+              SourceVolume: "platform"
+          Environment:
+            - Name: HOST
+              Value: "0.0.0.0"
+            - Name: PORT
+              Value: "80"
+            - Name: URL_HOST
+              Value: "play.void.dev"
+            - Name: URL_SCHEME
+              Value: "https"
+            - Name: URL_PORT
+              Value: 443
+            - Name: KEYS_PATH
+              Value: "/mnt/keys"
+            - Name: FILESTORE_PATH
+              Value: "/mnt/platform"
+            - Name: FILESTORE_BUCKET
+              Value: !Ref FileStoreBucket
+            - Name: VPC_CIDR
+              Value: !ImportValue "platform-vpc-cidr"
+            - Name: ENABLE_FIREWALL
+              Value: true
+            - Name: ENABLE_PASSWORD_LOGIN
+              Value: false
+          Secrets:
+            - Name: ENCRYPT_KEY
+              ValueFrom: !Ref SecretEncryptKey
+            - Name: SIGNING_KEY
+              ValueFrom: !Ref SecretSigningKey
+            - Name: DATABASE_URL
+              ValueFrom: !Ref SecretDatabaseUrl
+            - Name: REDIS_CACHE_URL
+              ValueFrom: !Ref SecretRedisCacheUrl
+            - Name: GITHUB_CLIENT_ID
+              ValueFrom: !Ref SecretGitHubClientId
+            - Name: GITHUB_CLIENT_SECRET
+              ValueFrom: !Ref SecretGitHubClientSecret
+            - Name: GITHUB_API_TOKEN
+              ValueFrom: !Ref SecretGitHubApiToken
+            - Name: DISCORD_CLIENT_ID
+              ValueFrom: !Ref SecretDiscordClientId
+            - Name: DISCORD_CLIENT_SECRET
+              ValueFrom: !Ref SecretDiscordClientSecret
+            - Name: PAPERTRAIL_TOKEN
+              ValueFrom: !Ref SecretPapertrailToken
+            - Name: SENTRY_ENDPOINT
+              ValueFrom: !Ref SecretSentryEndpoint
+            - Name: POSTMARK_API_TOKEN
+              ValueFrom: !Ref SecretPostmarkApiToken
+          HealthCheck:
+            Command:
+              - "CMD-SHELL"
+              - "curl -f http://localhost/ping?source=docker || exit 1"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 5
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: "web"
+      Volumes:
+        - Name: "keys"
+          EFSVolumeConfiguration:
+            FilesystemId: !ImportValue "platform-file-system"
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref KeysAccessPoint
+              IAM: ENABLED
+        - Name: "platform"
+          EFSVolumeConfiguration:
+            FilesystemId: !ImportValue "platform-file-system"
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref PlatformAccessPoint
+              IAM: ENABLED
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Ref Prefix
+      Cluster: !ImportValue "platform-cluster"
+      LaunchType: "FARGATE"
+      TaskDefinition: !Ref Prefix
+      DesiredCount: 1
+      PropagateTags: TASK_DEFINITION
+      LoadBalancers:
+        - ContainerName: "web"
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: "DISABLED"
+          Subnets:
+            - !ImportValue "platform-private-subnet-zone1"
+            - !ImportValue "platform-private-subnet-zone2"
+          SecurityGroups:
+            - !ImportValue "platform-web-security-group"
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Ref Prefix
+      Protocol: TCP
+      Port: 80
+      VpcId: !ImportValue "platform-vpc"
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /ping?source=nlb
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+        - Key: preserve_client_ip.enabled
+          Value: true
+
+  #=======================
+  # NETWORK LOAD BALANCER
+  #=======================
+
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "nlb" ] ]
+      Type: network
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !ImportValue "platform-loadbalancer-security-group"
+      Subnets:
+        - !ImportValue "platform-public-subnet-zone1"
+        - !ImportValue "platform-public-subnet-zone2"
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "nlb" ] ]
+
+  NetworkLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Protocol: TLS
+      Port: 443
+      Certificates:
+        - CertificateArn: !ImportValue "platform-ssl-certificate"
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  #=======================
+  # CACHE
+  #=======================
+
+  CacheParameterGroup:
+    Type: AWS::ElastiCache::ParameterGroup
+    Properties:
+      Description: "configuration for the platform cache"
+      CacheParameterGroupFamily: !FindInMap [ "config", "cache", "family" ]
+      Properties:
+        maxmemory-policy: "noeviction"   # required for REDIS worker Q
+        notify-keyspace-events: "AKE"    # enable REDIS pubsub
+
+  CacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      CacheSubnetGroupName: !Join [ '-', [ !Ref Prefix, "cache" ] ]
+      Description: "Cache Subnet Group"
+      SubnetIds:
+        - !ImportValue "platform-private-subnet-zone1"
+        - !ImportValue "platform-private-subnet-zone2"
+
+  Cache:
+    Type: AWS::ElastiCache::CacheCluster
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      CacheParameterGroupName:    !Ref CacheParameterGroup
+      CacheSubnetGroupName:       !Ref CacheSubnetGroup
+      ClusterName:                !Join [ '-', [ !Ref Prefix, "cache" ] ]
+      CacheNodeType:              !FindInMap [ "config", "cache", "instancetype" ]
+      Engine:                     !FindInMap [ "config", "cache", "engine" ]
+      EngineVersion:              !FindInMap [ "config", "cache", "version" ]
+      NumCacheNodes:              !FindInMap [ "config", "cache", "nodes" ]
+      PreferredMaintenanceWindow: !FindInMap [ "config", "cache", "maintenance" ]
+      VpcSecurityGroupIds:
+        - !ImportValue "platform-data-security-group"
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, cache ] ]
+
+#=======================
+# FINAL STACK OUTPUTS
+#=======================
+
+Outputs:
+  Repository:
+    Value: !GetAtt Repository.RepositoryUri
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "repository" ] ]
+  LogGroup:
+    Value: !GetAtt LogGroup.Arn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "log-group" ] ]
+  Cache:
+    Value: !Ref Cache
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "cache" ] ]
+  CacheEndpoint:
+    Value: !GetAtt Cache.RedisEndpoint.Address
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "cache-endpoint" ] ]
+  GitHubActionsRole:
+    Value: !GetAtt GitHubActionsRole.Arn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "github-actions-role" ] ]
+  ExecutionRole:
+    Value: !GetAtt ExecutionRole.Arn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "execution-role" ] ]
+  TaskRole:
+    Value: !GetAtt TaskRole.Arn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "task-role" ] ]
+  TaskFamily:
+    Value: !Ref Prefix
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "task-family" ] ]
+  TaskDefinition:
+    Value: !GetAtt Task.TaskDefinitionArn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "task-definition" ] ]
+  Service:
+    Value: !GetAtt Service.ServiceArn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "service" ] ]
+  NetworkLoadBalancer:
+    Value: !Ref NetworkLoadBalancer
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "nlb" ] ]
+  SecretEncryptKey:
+    Value: !Ref SecretEncryptKey
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "secret-encrypt-key" ] ]
+  SecretSigningKey:
+    Value: !Ref SecretSigningKey
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "secret-signing-key" ] ]

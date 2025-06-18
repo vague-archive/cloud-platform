@@ -1,0 +1,10 @@
+@page "/{org}/team"
+@model OrganizationTeamPage
+@{
+  Current.Page.Title = $"Team - {Current.Organization.Name}";
+}
+
+<div class="space-y-8">
+  <partial name="Team/Invites" />
+  <partial name="Team/Members" />
+</div>

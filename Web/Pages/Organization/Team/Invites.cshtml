@@ -1,0 +1,131 @@
+@model OrganizationTeamPage
+@{
+  var xData = new {
+    invite = new {
+      active = Current.Page.HasErrors,
+      email = Model.SendInvite.Email,
+    },
+    retract = new {
+      active = false,
+      target = new {
+        inviteId = "",
+        inviteSentTo = ""
+      }
+    },
+  };
+}
+
+<card qa="invites"
+  x-data-from="xData"
+  hx-target="this">
+
+  <card-header>
+    <card-title>
+      <span x-show="invite.active">Invite New Member</span>
+      <span x-show="!invite.active">Invitations</span>
+    </card-title>
+    <card-header-rhs x-show="!invite.active">
+      <button class="btn-primary" x-on:click="invite.active = true">Invite User</button>
+    </card-header-rhs>
+  </card-header>
+
+  <card-body>
+
+    <form class="mt-2 mb-8 max-w-128 mx-auto"
+      x-cloak
+      x-show="invite.active"
+      x-trap="invite.active"
+      x-on:keydown.window.escape="$refs.cancel.click()"
+      hx-post
+      hx-page="/Organization/Team"
+      hx-page-handler="SendInvite"
+      hx-page-org="@Current.Organization.Slug"
+      hx-disabled-elt="input, select, button">
+
+      <field>
+        <label asp-for="SendInvite.Email">Email:</label>
+        <field-input>
+          <input asp-for="SendInvite.Email" x-model="invite.email" autoComplete="off" data-1p-ignore="true" />
+        </field-input>
+        <field-error for="SendInvite.Email" model="Model"></field-error>
+      </field>
+
+      <form-buttons class="right">
+        <button type="button" class="btn-secondary"
+          x-ref="cancel"
+          hx-post
+          hx-page="/Organization/Team"
+          hx-page-handler="SendInviteCancel">
+          cancel
+        </button>
+        <button type="submit" class="btn-primary">
+          save
+        </button>
+      </form-buttons>
+    </form>
+
+    <div if="@Model.Invites.Count == 0">
+      There are no pending invitations.
+    </div>
+
+    <div
+      if="@Model.Invites.Count > 0"
+      x-on:retract="retract.target = event.srcElement.dataset; retract.active = true"
+      hx-post
+      hx-trigger="retract:confirmed"
+      hx-page="/Organization/Team"
+      hx-page-handler="RetractInvite"
+      hx-page-org="@Current.Organization.Slug"
+      hx-include="[name='inviteId']"
+      hx-disabled-elt="input, select, button">
+
+      <input type="hidden" name="inviteId" x-bind:value="retract.target.inviteId"></input>
+
+      <ul if="@Model.Invites.Count > 0" class="divide-y">
+        @foreach (var invite in Model.Invites)
+        {
+          <li class="flex gap-4 py-1 items-center hover:bg-gray-50" title="@invite.SentTo">
+            <div class="whitespace-nowrap w-48 truncate" qa="sent-to">@invite.SentTo</div>
+            <div class="flex-1 flex gap-2">
+              <span class="text-gray">sent:</span>
+              <span>
+                @Format.Date(invite.CreatedOn, DateStyle.DayOfMonth)
+              </span>
+              <span class="text-gray">expires:</span>
+              <span>
+                @Format.Date(invite.ExpiresOn!.Value, DateStyle.DayOfMonth)
+              </span>
+            </div>
+            <div class="w-7">
+              <button
+                class="btn-round btn-tertiary h-6"
+                title="retract invite"
+                data-invite-id="@invite.Id"
+                data-invite-sent-to="@invite.SentTo"
+                x-on:click="$dispatch('retract')">
+                <i class="iconoir-xmark"></i>
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+
+      <fx-modal x-bind:show="retract.active" x-on:close="retract.active=false">
+        <card>
+          <card-header>
+            <card-title>Retract invitation?</card-title>
+          </card-header>
+          <card-body class="p-8">
+            Are you sure you want to retract the invitation sent to <b x-text="retract.target.inviteSentTo"></b>?
+          </card-body>
+          <card-buttons>
+            <button class="btn-danger"    x-on:click="$dispatch('retract:confirmed')">Retract</button>
+            <button class="btn-secondary" x-on:click="$dispatch('close')">Cancel</button>
+          </card-buttons>
+        </card>
+      </fx-modal>
+
+    </div>
+
+  </card-body>
+</card>

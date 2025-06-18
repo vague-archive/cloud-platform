@@ -1,0 +1,77 @@
+@model SysAdminController.PageModel
+@{
+  var branches = Model.ExpiredBranches;
+  var since = Model.ExpiredBranchesSince;
+  var empty = branches.Count == 0;
+}
+
+<card qa="sysadmin-expired-branches" hx-target="this">
+  <card-header>
+    <card-title>
+      Expired Branches
+      <span class="ml-6 text-gray text-default">
+        older than @Format.Duration(since)
+      </span>
+    </card-title>
+  </card-header>
+  <card-body>
+    <p if="empty">No expired branches</p>
+    <table if="!empty" class="w-full">
+      <thead class="text-left text-xs uppercase bg-gray-50">
+        <tr>
+          <th class="px-2 py-1 text-left">Branch</th>
+          <th class="px-2 py-1 text-center hidden lg:table-cell">Number</th>
+          <th class="px-2 py-1 text-center hidden lg:table-cell">State</th>
+          <th class="px-2 py-1 text-right  hidden md:table-cell">Deployed On</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var branch in branches)
+        {
+          var org = RuntimeAssert.Present(branch.Organization);
+          var game = RuntimeAssert.Present(branch.Game);
+          var deploy = RuntimeAssert.Present(branch.ActiveDeploy);
+          <tr class="border-b border-gray-200">
+            <td class="px-2 py-1 whitespace-nowrap flex gap-1 items-center">
+              <button
+                hx-delete=@Url.SysAdminDeleteExpiredBranch(branch)
+                class="btn-round btn-danger"
+                title="delete expired branch">
+                <i class="iconoir-trash-solid"></i>
+              </button>
+              <table>
+                <tr>
+                  <td>
+                    <a class="link" href="@Url.SharePage(org, game)">
+                      @org.Slug/@game.Slug/@branch.Slug
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-2">
+                    <span>@deploy.Path</span>
+                    <span class="text-gray ml-2 lg:hidden">@Format.Enum(deploy.State)<span>
+                  </td>
+                </tr>
+                <tr class="md:hidden">
+                  <td class="px-2">
+                    @Format.RecentDateTimeHtml(deploy.DeployedOn, Clock.Now)
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td class="px-2 py-1 hidden lg:table-cell text-center">
+              @deploy.Number
+            </td>
+            <td class="px-2 py-1 hidden lg:table-cell text-center">
+              @Format.Enum(@deploy.State)
+            </td>
+            <td class="px-2 py-1 hidden md:table-cell text-right">
+              @Format.RecentDateTimeHtml(deploy.DeployedOn, Clock.Now)
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </card-body>
+</card>

@@ -1,0 +1,84 @@
+@model DownloadsPage
+@{
+  var stable = Model.LatestEditorStableRelease;
+  var canary = Model.LatestEditorCanaryRelease;
+  DownloadsPage.ReleaseLinks? links = null;
+}
+<card qa="editor">
+  <card-header>
+    <card-title>Fiasco</card-title>
+  </card-header>
+  <card-body>
+
+    @if (stable is null && canary is null)
+    {
+      <div class="border border-danger-500 bg-danger-50 p-4">
+        <p>
+          We're sorry. There are no downloads available at this time.
+          Please try again later.
+        </p>
+      </div>
+    }
+
+    @if (stable is not null)
+    {
+      <div class="mt-4">
+        <h2 class="h2" qa="stable-title">Stable (@stable.TagName)</h2>
+        <div class="text-gray">The (final) version of the vintage SDK editor</div>
+        <div class="text-gray" qa="stable-published-on">@Format.Date(stable.PublishedOn)</div>
+      </div>
+
+      links = Model.FindEditorLinks(stable);
+      if (links is not null)
+      {
+        <div class="text-16 mt-2" qa="stable-links">
+          <partial name="Downloads/DownloadLinks" model="links" />
+        </div>
+      }
+    }
+
+    @if (canary is not null)
+    {
+      <div class="mt-8">
+        <h2 class="h2" qa="canary-title">Canary (@canary.TagName)</h2>
+        <div class="text-gray">The latest cutting edge version of the Fiasco editor</div>
+        <div class="text-gray" qa="canary-published-on">@Format.Date(canary.PublishedOn)</div>
+      </div>
+
+      links = Model.FindEditorLinks(canary);
+      if (links is not null)
+      {
+        <div class="text-16 mt-2" qa="canary-links">
+          <partial name="Downloads/DownloadLinks" model="links" />
+        </div>
+      }
+    }
+
+    <hr class="my-8"></hr>
+
+    <details class="mb-4">
+      <summary class="cursor-pointer text-dark">
+        show all versions...
+      </summary>
+      <div class="divide-y">
+        @foreach (var release in Model.EditorReleases)
+        {
+          <div class="px-2 py-8">
+            <h3 class="h3">@release.TagName</h3>
+            <div class="text-gray">@Format.Date(release.PublishedOn)</div>
+            @{
+              links = Model.FindEditorLinks(release);
+            }
+            @if (links is not null)
+            {
+              <div class="text-16 mt-2">
+                <partial name="Downloads/DownloadLinks" model="links" />
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </details>
+
+  </card-body>
+</card>

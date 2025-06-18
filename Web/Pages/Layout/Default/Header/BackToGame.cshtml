@@ -1,0 +1,12 @@
+<span class="flex-1 flex items-center gap-8">
+  <span class="max-w-48 truncate">
+    @Current.Game.Name
+  </span>
+  <a class="btn-secondary px-2 py-0 h-fit min-w-fit"
+     asp-page="/Game/Share"
+     asp-route-org="@Current.Organization.Slug"
+     asp-route-game="@Current.Game.Slug">
+    <i class="iconoir-nav-arrow-left text-20"></i>
+    <span class="pr-4">back</span>
+  </a>
+</span>

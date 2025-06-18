@@ -1,0 +1,136 @@
+@model GameSettingsPage
+@{
+  var xData = new {
+    update = new {
+      active = Current.Page.HasErrors,
+      name = Model.UpdateGame.Name,
+      oldSlug = Model.UpdateGame.Slug,
+      newSlug = Model.UpdateGame.Slug,
+      description = Model.UpdateGame.Description,
+    },
+    archive = new {
+      confirm = false
+    }
+  };
+}
+
+<card qa=active-game-settings
+  x-data-from="xData"
+  hx-target="this">
+
+  <card-header>
+    <card-title>Settings</card-title>
+  </card-header>
+
+  <card-body class="max-w-128">
+
+    <div x-show="!update.active">
+      <field>
+        <label>Name:</label>
+        <div>@Current.Game.Name</div>
+      </field>
+      <field>
+        <label>Identity:</label>
+        <div class="font-bold flex">@Current.Organization.Slug/@Current.Game.Slug</div>
+      </field>
+      <field>
+        <label>Description:</label>
+        <div>@Current.Game.Description</div>
+      </field>
+      <div class="mt-4">
+        <button type="button" class="btn-primary btn-wide" x-on:click="update.active=true">
+          Edit
+        </button>
+      </div>
+    </div>
+
+    <form
+      x-cloak
+      x-show="update.active"
+      x-trap="update.active"
+      x-on:keydown.escape="$refs.cancel.click()"
+      hx-post
+      hx-page="/Game/Settings"
+      hx-page-org="@Current.Organization.Slug"
+      hx-page-game="@Current.Game.Slug"
+      hx-page-handler="UpdateGame"
+      hx-disabled-elt="input,button">
+
+      <div class="border-2 border-warn-100 bg-warn-50 text-large text-warn-900 p-4 mb-4">
+        <b>WARNING</b>:
+        Changing the name of your game also changes the identity used in URL's and you will have to update
+        your automated integrations (if any) with the new identity.
+      </div>
+
+      <field>
+        <label asp-for="UpdateGame.Name">Name:</label>
+        <field-input>
+          <input asp-for="UpdateGame.Name" x-model="update.name" x-on:input="update.newSlug = lib.slugify(update.name)" autocomplete="off" data-1p-ignore></input>
+        </field-input>
+        <field-error for="UpdateGame.Name" model="Model"></field-error>
+      </field>
+
+      <field>
+        <label>Identity:</label>
+        <div class="font-bold flex">
+          @Current.Organization.Slug/
+          <span x-text="update.newSlug"></span>
+          <span x-show="update.newSlug !== update.oldSlug" class="text-danger pl-4">(CHANGED)</span>
+        </div>
+      </field>
+
+      <field>
+        <label asp-for="UpdateGame.Description">Description:</label>
+        <field-input>
+          <textarea asp-for="UpdateGame.Description" x-model="update.description" rows=5></textarea>
+        </field-input>
+        <field-error for="UpdateGame.Description" model="Model"></field-error>
+      </field>
+
+      <form-buttons class="right">
+        <button type="button" class="btn-secondary"
+          x-ref="cancel"
+          hx-post
+          hx-page="/Game/Settings"
+          hx-page-org="@Current.Organization.Slug"
+          hx-page-game="@Current.Game.Slug"
+          hx-page-handler="CancelUpdateGame">
+          cancel
+        </button>
+        <button type="submit" class="btn-primary">
+          save
+        </button>
+      </form-buttons>
+    </form>
+
+    <div class="mt-4"
+      x-cloak
+      x-show="!update.active"
+      hx-post
+      hx-page="/Game/Settings"
+      hx-page-handler="ArchiveGame"
+      hx-page-org="@Current.Organization.Slug"
+      hx-page-game="@Current.Game.Slug"
+      hx-trigger="confirm">
+      <button class="btn-danger btn-wide flex gap-2" x-on:click="archive.confirm=true" title="archive">
+        <i class="iconoir-archive"></i>
+        Archive
+      </button>
+      <fx-modal x-bind:show="archive.confirm" x-on:close="archive.confirm=false">
+        <card>
+          <card-header>
+            <card-title>Archive Game?</card-title>
+          </card-header>
+          <card-body>
+            Are you sure you want to archive this game? Shared builds of an archived game cannot be accessed until the game is restored.
+          </card-body>
+          <card-buttons>
+            <button class="btn-danger"    x-on:click="$dispatch('confirm')">Archive</button>
+            <button class="btn-secondary" x-on:click="$dispatch('close')">Cancel</button>
+          </card-buttons>
+        </card>
+      </fx-modal>
+    </div>
+
+  </card-body>
+</card>

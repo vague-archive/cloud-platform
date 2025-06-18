@@ -1,0 +1,13 @@
+@model Share.Branch;
+<button
+  title="delete shared build"
+  x-on:click="deleteBranch={id:@Model.Id}"
+  hx-post
+  hx-page="/Game/Share"
+  hx-page-handler="DeleteBranch"
+  hx-page-org="@Current.Organization.Slug"
+  hx-page-game="@Current.Game.Slug"
+  hx-page-slug="@Model.Slug"
+  hx-trigger="delete:branch:@Model.Id from:window">
+  <i class="iconoir-trash text-24"></i>
+</button>

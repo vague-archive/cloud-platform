@@ -1,0 +1,582 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  Provision the platform vpc
+
+Mappings:
+  config:
+    vpc:
+      zone1: us-west-2a
+      zone2: us-west-2b
+      keyname: void-platform
+    cidr:
+      vpc:          10.10.0.0/16
+      publiczone1:  10.10.1.0/24
+      publiczone2:  10.10.2.0/24
+      privatezone1: 10.10.10.0/24
+      privatezone2: 10.10.20.0/24
+    ip:
+      ops:    10.10.1.5   # public
+      nat1:   10.10.1.99  # public
+      nat2:   10.10.2.99  # public
+      files1: 10.10.10.10 # private
+      files2: 10.10.20.20 # private
+    ops:
+      ami:          ami-0683f18edd7d92bc1 # ARM64, us-west-2, Noble Numbat, 24.04 LTS, hvm:ebs-ssd-gp3, 20250401    - see https://cloud-images.ubuntu.com/locator/ec2/
+      instancetype: t4g.micro             # ARM64
+      ebsoptimized: false
+
+Parameters:
+  Prefix:
+    Description: Name Prefix
+    Type: String
+    Default: platform
+  SSLCertificateArn:
+    Description: SSL certificate for ELB https listener
+    Type: String
+    Default: arn:aws:acm:us-west-2:339712894694:certificate/72e1acfc-38d1-4736-833a-9bdf23785a22
+
+Resources:
+
+  #=======================
+  # VPC
+  #=======================
+
+  Gateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "igw" ] ]
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [ "config", "cidr", "vpc" ]
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "vpc" ] ]
+
+  VpcGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref Gateway
+      VpcId: !Ref Vpc
+
+  DHCPOptions:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: us-west-2.compute.internal
+      DomainNameServers:
+        - AmazonProvidedDNS
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "dhcp" ] ]
+
+  VpcDHCPOptions:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      DhcpOptionsId: !Ref DHCPOptions
+      VpcId: !Ref Vpc
+
+  #==============================
+  # NETWORKING - SUBNETS
+  #==============================
+
+  PublicSubnetZone1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock:        !FindInMap [ "config", "cidr", "publiczone1" ]
+      AvailabilityZone: !FindInMap [ "config", "vpc",  "zone1" ]
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "public-subnet-zone1" ] ]
+
+  PublicSubnetZone2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock:        !FindInMap [ "config", "cidr", "publiczone2" ]
+      AvailabilityZone: !FindInMap [ "config", "vpc",  "zone2" ]
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "public-subnet-zone2" ] ]
+
+  PrivateSubnetZone1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock:        !FindInMap [ "config", "cidr", "privatezone1" ]
+      AvailabilityZone: !FindInMap [ "config", "vpc",  "zone1" ]
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "private-subnet-zone1" ] ]
+
+  PrivateSubnetZone2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock:        !FindInMap [ "config", "cidr", "privatezone2" ]
+      AvailabilityZone: !FindInMap [ "config", "vpc",  "zone2" ]
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "private-subnet-zone2" ] ]
+
+  #=============================
+  # NETWORKING - PUBLIC ROUTING
+  #=============================
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "public-routetable" ] ]
+
+  PublicRouteTableSubnetZone1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetZone1
+
+  PublicRouteTableSubnetZone2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetZone2
+
+  PublicRouteToInternet:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref Gateway
+
+  #===============================
+  # NETWORKING - PRIVATE ROUTING
+  #===============================
+
+  PrivateRouteTableZone1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "private-routetable-zone1" ] ]
+
+  PrivateRouteTableZone2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "private-routetable-zone2" ] ]
+
+  PrivateRouteTableSubnetZone1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableZone1
+      SubnetId: !Ref PrivateSubnetZone1
+
+  PrivateRouteTableSubnetZone2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableZone2
+      SubnetId: !Ref PrivateSubnetZone2
+
+  PrivateRouteToInternetZone1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PrivateRouteTableZone1
+      NatGatewayId: !Ref NatGatewayZone1
+
+  PrivateRouteToInternetZone2:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PrivateRouteTableZone2
+      NatGatewayId: !Ref NatGatewayZone2
+
+  NatEIPZone1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "nat-eip-zone1" ] ]
+    DependsOn: VpcGateway
+
+  NatEIPZone2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "nat-eip-zone2" ] ]
+    DependsOn: VpcGateway
+
+  NatGatewayZone1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIPZone1.AllocationId
+      ConnectivityType: public
+      PrivateIpAddress: !FindInMap [ "config", "ip", "nat1" ]
+      SubnetId: !Ref PublicSubnetZone1
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "nat-gateway-zone1" ] ]
+
+  NatGatewayZone2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIPZone2.AllocationId
+      ConnectivityType: public
+      PrivateIpAddress: !FindInMap [ "config", "ip", "nat2" ]
+      SubnetId: !Ref PublicSubnetZone2
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "nat-gateway-zone2" ] ]
+
+  #=======================
+  # SECURITY GROUPS
+  #=======================
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupName: !Join [ '-', [ !Ref Prefix, "loadbalancer" ] ]
+      GroupDescription: "Platform Load Balancer Security Group"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "loadbalancer" ] ]
+
+  OpsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupName: !Join [ '-', [ !Ref Prefix, "ops" ] ]
+      GroupDescription: "Platform Operations Security Group"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "ops" ] ]
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupName: !Join [ '-', [ !Ref Prefix, "web" ] ]
+      GroupDescription: "Platform Web Security Group"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          SourceSecurityGroupId: !Ref OpsSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "web" ] ]
+
+  DataSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupName: !Join [ '-', [ !Ref Prefix, "data" ] ]
+      GroupDescription: "Platform Data Security Group"
+      SecurityGroupIngress:
+        - Description: mysql
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref WebSecurityGroup
+        - Description: redis
+          IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref WebSecurityGroup
+        - Description: efs
+          IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref WebSecurityGroup
+        - Description: mysql
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref OpsSecurityGroup
+        - Description: redis
+          IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref OpsSecurityGroup
+        - Description: efs
+          IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref OpsSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "data" ] ]
+
+  #==================
+  # EFS FILE SYSTEM
+  #==================
+
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      FileSystemTags:
+        - Key: Name
+          Value: !Ref Prefix
+
+  FileSystemMountTargetZone1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      IpAddress: !FindInMap [ "config", "ip", "files1" ]
+      SubnetId: !Ref PrivateSubnetZone1
+      SecurityGroups:
+        - !Ref DataSecurityGroup
+
+  FileSystemMountTargetZone2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      IpAddress: !FindInMap [ "config", "ip", "files2" ]
+      SubnetId: !Ref PrivateSubnetZone2
+      SecurityGroups:
+        - !Ref DataSecurityGroup
+
+  #=======================
+  # OPS BASTION HOST
+  #=======================
+
+  OpsEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "ops-eip" ] ]
+    DependsOn: VpcGateway
+
+  OpsPublicInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      GroupSet:
+        - !Ref OpsSecurityGroup
+      SubnetId: !Ref PublicSubnetZone1
+      PrivateIpAddress: !FindInMap [ "config", "ip", "ops" ]
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "ops-public-interface" ] ]
+
+  OpsEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt OpsEIP.AllocationId
+      PrivateIpAddress: !FindInMap [ "config", "ip", "ops" ]
+      NetworkInterfaceId: !Ref OpsPublicInterface
+
+  OpsInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !FindInMap [ "config", "vpc", "zone1" ]
+      KeyName:          !FindInMap [ "config", "vpc", "keyname" ]
+      ImageId:          !FindInMap [ "config", "ops", "ami" ]
+      InstanceType:     !FindInMap [ "config", "ops", "instancetype" ]
+      EbsOptimized:     !FindInMap [ "config", "ops", "ebsoptimized" ]
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref OpsPublicInterface
+          DeviceIndex: '0'
+      UserData:
+        Fn::Base64: !Sub |
+          #cloud-config
+          hostname: ops
+          package_upgrade: true
+          packages:
+            - nfs-common
+            - redis-tools
+            - mysql-client
+            - httpie
+            - traceroute
+          runcmd:
+            - mkdir -p /mnt/filestore
+            - mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${FileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/filestore
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "ops" ] ]
+
+  #=======================
+  # ECS CLUSTER
+  #=======================
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref Prefix
+
+  #============================
+  # APPLICATION LOAD BALANCER
+  #============================
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Join [ '-', [ !Ref Prefix, "alb" ] ]
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets:
+        - !Ref PublicSubnetZone1
+        - !Ref PublicSubnetZone2
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ !Ref Prefix, "alb" ] ]
+
+  ApplicationLoadBalancerHTTPRedirect:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: 443
+            StatusCode: HTTP_301
+
+  ApplicationLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTPS
+      Port: 443
+      Certificates:
+        - CertificateArn: !Ref SSLCertificateArn
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: 404
+            ContentType: text/plain
+            MessageBody: Not Found
+
+#=======================
+# FINAL STACK OUTPUTS
+#=======================
+
+Outputs:
+  Vpc:
+    Value: !Ref Vpc
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "vpc" ] ]
+  VpcCidr:
+    Value: !GetAtt Vpc.CidrBlock
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "vpc-cidr" ] ]
+  FileSystem:
+    Value: !Ref FileSystem
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "file-system" ] ]
+  FileSystemArn:
+    Value: !GetAtt FileSystem.Arn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "file-system-arn" ] ]
+  EcsCluster:
+    Value: !GetAtt EcsCluster.Arn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "cluster" ] ]
+  PublicSubnetZone1:
+    Value: !Ref PublicSubnetZone1
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "public-subnet-zone1" ] ]
+  PublicSubnetZone2:
+    Value: !Ref PublicSubnetZone2
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "public-subnet-zone2" ] ]
+  PrivateSubnetZone1:
+    Value: !Ref PrivateSubnetZone1
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "private-subnet-zone1" ] ]
+  PrivateSubnetZone2:
+    Value: !Ref PrivateSubnetZone2
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "private-subnet-zone2" ] ]
+  OpsInstance:
+    Value: !Ref OpsInstance
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "ops" ] ]
+  OpsEIP:
+    Value: !Ref OpsEIP
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "ops-eip" ] ]
+  NatEIPZone1:
+    Value: !Ref NatEIPZone1
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "nat-eip-zone1" ] ]
+  NatEIPZone2:
+    Value: !Ref NatEIPZone2
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "nat-eip-zone2" ] ]
+  LoadBalancerSecurityGroup:
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "loadbalancer-security-group" ] ]
+  OpsSecurityGroup:
+    Value: !Ref OpsSecurityGroup
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "ops-security-group" ] ]
+  WebSecurityGroup:
+    Value: !Ref WebSecurityGroup
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "web-security-group" ] ]
+  DataSecurityGroup:
+    Value: !Ref DataSecurityGroup
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "data-security-group" ] ]
+  ApplicationLoadBalancer:
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "alb" ] ]
+  ApplicationLoadBalancerListener:
+    Value: !Ref ApplicationLoadBalancerListener
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "alb-listener" ] ]
+  SSLCertificateArn:
+    Value: !Ref SSLCertificateArn
+    Export:
+      Name: !Join [ '-', [ !Ref Prefix, "ssl-certificate" ] ]

@@ -1,0 +1,49 @@
+<card qa="sysadmin-experiment">
+  <card-ribbon class="bg-warn-800 text-white">YOLO</card-ribbon>
+  <card-header class="bg-warn-300 text-dark">
+    <card-title>
+      Experimental
+    </card-title>
+  </card-header>
+  <card-body class="space-y-4">
+
+    <div class="flex gap-8 items-center">
+      <div class="flex-1">
+        View (and evict) cache keys (only available with Redis cache)
+      </div>
+      <div class="flex-1">
+        <a class="btn-primary" href=@Url.Action("Cache", "SysAdmin")>
+          view cache keys
+        </a>
+      </div>
+    </div>
+
+    <div class="flex gap-8 items-center">
+      <div class="flex-1">
+        Verify our postmark integration is working.
+      </div>
+      <div class="flex-1">
+        <button
+          class="btn-primary"
+          hx-post=@Url.Action("SendExampleEmail", "SysAdmin")>
+          send yourself an email
+        </button>
+      </div>
+    </div>
+
+    <div class="flex gap-8 items-center">
+      <div class="flex-1">
+        Test Background Job
+      </div>
+      <div class="flex-1">
+        <button
+          class="btn-primary"
+          hx-post=@Url.Action("EnqueueExample", "SysAdmin") hx-swap="none">
+          enqueue
+        </button>
+      </div>
+    </div>
+
+  </card-body>
+</card>
+

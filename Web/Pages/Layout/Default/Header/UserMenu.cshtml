@@ -1,0 +1,85 @@
+@{
+  var clsLink = "block px-4 py-1 text-gray-700 whitespace-nowrap hover:bg-success-50";
+  var clsActiveLink = "bg-gray-100";
+  var clsLogoutLink = "block w-full flex justify-between px-4 py-1 text-left text-gray-700 hover:bg-success-50";
+}
+<div
+  x-data="{ open: false }"
+  class="flex items-center gap-2">
+
+  <span class="hidden md:block">
+    @Current.Principal.Name
+  </span>
+
+  <div class="relative">
+    <button
+      x-on:click="open = !open"
+      class="w-14 h-full flex items-center justify-center hover:bg-gray-100">
+      <i class="iconoir-user text-24"></i>
+    </button>
+    <div
+      x-show="open"
+      x-on:click.outside="open = false"
+      x-on:keyup.window.escape="open = false"
+      class="absolute flex flex-col right-0 z-10 mt-0.5 w-64 overflow-hidden origin-top-right bg-light border border-current py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
+      style="display:none"
+    >
+      <div class="px-4 py-2 border-b border-current mb-2">
+        <div class="font-bold text-gray-800 truncate">
+          @Current.Principal.Name
+        </div>
+        <div class="font-medium text-gray-500 truncate">
+          @Current.Principal.Email
+        </div>
+      </div>
+
+      <a
+        asp-page="/Home"
+        class="@clsLink"
+        active-class="@clsActiveLink">
+        <span if="@Current.Principal.BelongsToSingleOrganization">
+          Your Organization
+        </span>
+        <span if="@Current.Principal.BelongsToMultipleOrganizations">
+          Your Organizations (@Current.Principal.Organizations.Count)
+        </span>
+      </a>
+
+      <a
+        asp-page="/Profile"
+        class="@clsLink"
+        active-class="@clsActiveLink">
+        Your Profile
+      </a>
+
+      <a
+        asp-page="/Downloads"
+        class="@clsLink"
+        active-class="@clsActiveLink">
+        Downloads
+      </a>
+
+      <a
+        asp-page="/Editor/Tools" boost="false"
+        class="@clsLink"
+        active-class="@clsActiveLink">
+        Editor Tools
+      </a>
+
+      <a
+        if=@Current.Principal.IsInRole(Account.UserRole.SysAdmin)
+        href=@Url.Action("Index", "SysAdmin")
+        class="@clsLink"
+        active-class="@clsActiveLink">
+        SysAdmin
+      </a>
+
+      <form asp-page="/Login" asp-route-provider="none" asp-page-handler="logout">
+        <button type="submit" class="@clsLogoutLink">
+          Sign Out
+          <i class="iconoir-log-out text-20"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,23 @@
+@page "/join/{token}"
+@model JoinPage
+@{
+  Layout = "Layout/Modal";
+  Current.Page.Title = "Join Organization";
+
+  string partial;
+  if (Model.Unavailable)
+  {
+    Current.Page.Title = "Invite Unavailable";
+    partial = "Join/Unavailable";
+  }
+  else if (Current.Principal.IsLoggedIn)
+  {
+    partial = "Join/LoggedIn";
+  }
+  else
+  {
+    partial = "Join/Anonymous";
+  }
+}
+
+<partial name="@partial"></partial>

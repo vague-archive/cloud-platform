@@ -1,0 +1,65 @@
+name: Deploy Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [production]
+
+env:
+  AWS_REGION : "us-west-2"
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+  AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+jobs:
+  deploy:
+    name: "Deploy"
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "Configure AWS Credentials"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: "Login to Amazon ECR"
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: "Build and Push Docker Image"
+        uses: docker/build-push-action@v6
+        id: image
+        with:
+          context: .
+          file: Ops/dockerfile
+          push: true
+          build-args: |
+            NPM_TOKEN=${{ secrets.NPM_TOKEN }}
+          tags: |
+            ${{ env.AWS_ECR_REPOSITORY }}:latest
+            ${{ env.AWS_ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: "Update ECS Task Definition"
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: task
+        with:
+          task-definition-family: "platform"
+          container-name: "web"
+          image: ${{ env.AWS_ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: "Deploy ECS Service"
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task.outputs.task-definition }}
+          cluster: "platform"
+          service: "platform"
+          wait-for-service-stability: true

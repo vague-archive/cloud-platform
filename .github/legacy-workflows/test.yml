@@ -1,0 +1,86 @@
+name: Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - production
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  TEST_DATABASE_URL: "Host=database;User=root;Password=platform;Database=platform_test"
+  ASPNETCORE_HTTP_PORTS: ""
+
+jobs:
+  build:
+    runs-on: void-4-core
+    container: mcr.microsoft.com/dotnet/sdk:8.0-noble
+
+    services:
+      database:
+        image: mysql:8.3.0
+        env:
+          MYSQL_DATABASE: platform_test
+          MYSQL_ROOT_PASSWORD: platform
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: "checkout code"
+        uses: actions/checkout@v4
+
+      - name: "install workflow dependencies"
+        run: |
+          apt update
+          apt install -y unzip
+
+      - name: "install bun"
+        uses: oven-sh/setup-bun@v2
+
+      - name: "install bun dependencies"
+        run: bun install
+
+      - name: "build all"
+        run: bun build:all
+
+      - name: "prepare database"
+        run: bun db prepare test
+
+      - name: "run all tests"
+        run: bun run ci:test && bun run ci:cover
+
+      - name: "generate code coverage report"
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: .cover/Cobertura.xml
+          badge: true
+          fail_below_min: true
+          format: markdown
+          hide_branch_rate: true
+          hide_complexity: true
+          indicators: true
+          output: both
+          thresholds: '60 80'
+
+      - name: "archive code coverage results"
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: code-coverage-results.md
+
+      # getting a notification (because new comment) is kind of annoying, is there a better way?
+      #
+      # - name: "add coverage comment to PR"
+      #   uses: marocchino/sticky-pull-request-comment@v2
+      #   if: github.event_name == 'pull_request'
+      #   with:
+      #     recreate: true
+      #     path: code-coverage-results.md

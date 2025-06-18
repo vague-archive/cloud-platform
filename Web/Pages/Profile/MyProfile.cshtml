@@ -1,0 +1,103 @@
+@model ProfilePage
+@{
+  var xData = new {
+    update = new {
+      active = Current.Page.HasErrors,
+      name = Model.UpdateProfile.Name,
+      timeZone = Model.UpdateProfile.TimeZone,
+      locale = Model.UpdateProfile.Locale
+    }
+  };
+}
+
+<card
+  qa="my-profile"
+  x-data-from="xData"
+  hx-target="this">
+  <card-header>
+    <card-title>My Profile</card-title>
+  </card-header>
+  <card-body>
+
+    <div x-show="!update.active">
+      <field>
+        <label>Name:</label>
+        <div>@Model.UpdateProfile.Name</div>
+      </field>
+      <field>
+        <label>Timezone:</label>
+        <div>@Model.UpdateProfile.TimeZone</div>
+      </field>
+      <field>
+        <label>Locale:</label>
+        <div>@Model.UpdateProfile.Locale</div>
+      </field>
+      <div class="mt-4">
+        <button type="button"
+          class="btn-primary"
+          x-on:click="update.active=true">
+          edit
+        </button>
+      </div>
+    </div>
+
+    <form class="max-w-96"
+      x-cloak="true"
+      x-show="update.active"
+      x-trap="update.active"
+      x-on:keydown.escape="$refs.cancel.click()"
+      hx-post
+      hx-page="/Profile"
+      hx-page-handler="UpdateProfile"
+      hx-disabled-elt="input,select,button">
+
+      <field>
+        <label asp-for="UpdateProfile.Name">Name:</label>
+        <field-input>
+          <input asp-for="UpdateProfile.Name" x-model="update.name" autocomplete=off data-1p-ignore />
+        </field-input>
+        <field-error for="UpdateProfile.Name" model="Model"></field-error>
+      </field>
+
+      <field>
+        <label asp-for="UpdateProfile.TimeZone">Timezone:</label>
+        <field-input>
+          <select asp-for="UpdateProfile.TimeZone" x-model="update.timeZone">
+            @foreach (var tz in @International.TimeZoneIds)
+            {
+              <option>@tz</option>
+            }
+          </select>
+        </field-input>
+        <field-error for="UpdateProfile.TimeZone" model="Model"></field-error>
+      </field>
+
+      <field>
+        <label asp-for="UpdateProfile.Locale">Locale:</label>
+        <field-input>
+          <select asp-for="UpdateProfile.Locale" x-model="update.locale">
+            @foreach (var locale in @International.Locales)
+            {
+              <option>@locale</option>
+            }
+          </select>
+        </field-input>
+        <field-error for="UpdateProfile.Locale" model="Model"></field-error>
+      </field>
+
+      <div class="mt-4 flex gap-2 justify-end">
+        <button type="button" class="btn-secondary"
+          x-ref="cancel"
+          hx-post
+          hx-page="/Profile"
+          hx-page-handler="CancelUpdateProfile">
+          cancel
+        </button>
+        <button type="submit" class="btn-primary">
+          save
+        </button>
+      </div>
+    </form>
+
+  </card-body>
+</card>

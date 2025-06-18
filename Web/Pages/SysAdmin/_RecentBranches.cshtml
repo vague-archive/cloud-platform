@@ -1,0 +1,80 @@
+@model SysAdminController.PageModel
+@{
+  var branches = Model.RecentBranches;
+  var since = Model.RecentBranchesSince;
+  var empty = branches.Count == 0;
+}
+
+<card qa="sysadmin-recent-branches" hx-target="this">
+  <card-header>
+    <card-title>
+      Recent Branches
+      <span class="ml-6 text-gray text-default">
+        in last @Format.Duration(since)
+      </span>
+    </card-title>
+  </card-header>
+  <card-body>
+    <p if="empty">No recent branches</p>
+    <table if="!empty" class="w-full">
+      <thead class="text-left text-xs uppercase bg-gray-50">
+        <tr>
+          <th class="px-2 py-1 text-left">Branch</th>
+          <th class="px-2 py-1 text-center hidden lg:table-cell">Active</th>
+          <th class="px-2 py-1 text-center hidden lg:table-cell">Latest</th>
+          <th class="px-2 py-1 text-center hidden lg:table-cell">State</th>
+          <th class="px-2 py-1 text-right  hidden md:table-cell">Deployed On</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var branch in branches)
+        {
+          var org = RuntimeAssert.Present(branch.Organization);
+          var game = RuntimeAssert.Present(branch.Game);
+          var active = RuntimeAssert.Present(branch.ActiveDeploy);
+          var latest = RuntimeAssert.Present(branch.LatestDeploy);
+          <tr class="border-b border-gray-200">
+            <td class="px-2 py-1 whitespace-nowrap">
+
+              <table>
+                <tr>
+                  <td>
+                    <a class="link" href="@Url.SharePage(org, game)">
+                      @org.Slug/@game.Slug/@branch.Slug
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-2">
+                    <span>@active.Path</span>
+                    <span class="text-gray ml-2 lg:hidden">
+                      @Format.Enum(latest.State) (@latest.Number)
+                    <span>
+                  </td>
+                </tr>
+                <tr class="md:hidden">
+                  <td class="px-2">
+                    @Format.RecentDateTimeHtml(latest.UpdatedOn, Clock.Now)
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+            <td class="px-2 py-1 hidden lg:table-cell text-center">
+              @active.Number
+            </td>
+            <td class="px-2 py-1 hidden lg:table-cell text-center">
+              @latest.Number
+            </td>
+            <td class="px-2 py-1 hidden lg:table-cell text-center">
+              @Format.Enum(@latest.State)
+            </td>
+            <td class="px-2 py-1 hidden md:table-cell text-right">
+              @Format.RecentDateTimeHtml(latest.UpdatedOn, Clock.Now)
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </card-body>
+</card>

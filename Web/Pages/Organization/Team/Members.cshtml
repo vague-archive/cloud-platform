@@ -1,0 +1,86 @@
+@model OrganizationTeamPage
+@{
+  var xData = new {
+    confirm = false,
+    target = new {
+      userId = "",
+      userName = ""
+    },
+  };
+}
+
+<card
+  qa="team"
+  x-on:disconnect="target = event.srcElement.dataset; confirm=true"
+  x-data-from="xData"
+  hx-post
+  hx-trigger="confirm"
+  hx-target="this"
+  hx-page="/Organization/Team"
+  hx-page-handler="DisconnectMember"
+  hx-page-org="@Current.Organization.Slug"
+  hx-include="[name='userId']"
+  hx-disabled-elt="input, select, button">
+
+  <card-header>
+    <card-title>Team Members</card-title>
+  </card-header>
+
+  <card-body>
+    <input type="hidden" name="userId" x-bind:value="target.userId"></input>
+    <ul class="block divide-y">
+      @foreach (var member in Model.Members)
+      {
+        var user = member.User!;
+        var identities = user.Identities!;
+        <li class="flex items-center gap-2 py-1">
+          <div class="flex-1 truncate">
+            <div class="bold" qa="name">@user.Name</div>
+            <div class="md:hidden my-2 ml-4">
+            @foreach (var identity in identities)
+            {
+              <identity-label for="identity"></identity-label>
+            }
+            </div>
+          </div>
+          <span class="hidden md:flex flex-1 flex-wrap items-center gap-2 pr-2">
+            @foreach (var identity in identities)
+            {
+              <identity-label for="identity"></identity-label>
+            }
+          </span>
+          <span class="flex-1 text-gray ml-4 truncate">(@user.Email)</span>
+          <span class="w-7">
+            <button
+              if="@user.Id != Current.Principal.Id"
+              class="btn-round btn-tertiary h-6"
+              title="disconnect member"
+              data-user-id="@user.Id"
+              data-user-name="@user.Name"
+              x-on:click="$dispatch('disconnect')">
+              <i class="iconoir-xmark"></i>
+            </button>
+          </span>
+        </li>
+      }
+    </ul>
+
+    <fx-modal x-bind:show="confirm" x-on:close="confirm=false">
+      <card>
+        <card-header>
+          <card-title>
+            Remove Member from Organization?
+          </card-title>
+        </card-header>
+        <card-body class="p-8">
+          Are you sure you want to remove <b x-text="target.userName"></b> from your organization? This action cannot be undone.
+        </card-body>
+        <card-buttons>
+          <button class="btn-danger"    x-on:click="$dispatch('confirm')">Remove</button>
+          <button class="btn-secondary" x-on:click="$dispatch('close')">Cancel</button>
+        </card-buttons>
+      </card>
+    </fx-modal>
+
+  </card-body>
+</card>

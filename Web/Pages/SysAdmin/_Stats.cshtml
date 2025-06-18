@@ -1,0 +1,114 @@
+@model SysAdminController.StatsModel;
+@{
+  var dbStats = Model.DatabaseStats;
+  var fileStats = Model.FileStats;
+}
+
+<card qa="sysadmin-stats" hx-target="this">
+  <card-header>
+    <card-title>
+      Statistics
+      <span class="ml-6 text-gray text-default">
+        cached @Format.RecentDateTimeHtml(dbStats.CalculatedOn, Clock.Now)
+      </span>
+    </card-title>
+  </card-header>
+  <card-body>
+    <table>
+      <tr>
+        <th class="text-left px-2">organizations</th>
+        <td class="px-2" qa="organizations">@dbStats.Organizations</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">users</th>
+        <td class="px-2" qa="users">@dbStats.Users</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">tokens</th>
+        <td class="px-2" qa="tokens">@dbStats.Tokens</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">tools</th>
+        <td class="px-2" qa="tools">@dbStats.Tools</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">games</th>
+        <td class="px-2" qa="games">@dbStats.Games</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">branches</th>
+        <td class="px-2" qa="branches">@dbStats.Branches</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">deploys</th>
+        <td class="px-2" qa="deploys">@dbStats.Deploys</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td colspan="3"><hr class="my-4"></td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">file count</th>
+        <td class="px-2" qa="file-count">
+          @if (fileStats is not null)
+          {
+            <span qa="local-file-count" class="whitespace-nowrap">@fileStats.LocalFileCount</span>
+            @if (fileStats.HasRemote)
+            {
+              <span>/</span>
+              <span qa="remote-file-count">@fileStats.RemoteFileCount</span>
+              @if (fileStats.LocalFileCount != fileStats.RemoteFileCount)
+              {
+                <a href="@Url.SysAdminFileStoreDiff()" class="link">...diff</a>
+              }
+            }
+          }
+          else
+          {
+            <span class="italic text-gray">unknown</span>
+          }
+        </td>
+        <td rowspan="2">
+          <div class="flex flex-wrap items-center gap-4 pl-4">
+            @if (fileStats is not null)
+            {
+              <div class="text-gray">
+                cached @Format.RecentDateTimeHtml(fileStats.CalculatedOn, Clock.Now)
+              </div>
+            }
+            <button class="btn-danger btn-small"
+              hx-post=@Url.Action("RefreshFileStats", "SysAdmin")
+              title="DANGER! this will be slow!">
+              <span class="htmx-hide">Recalculate</span>
+              <span class="htmx-progress iconoir-playstation-gamepad text-16"></span>
+            </button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <th class="text-left px-2">file size</th>
+        <td class="px-2">
+          @if (fileStats is not null)
+          {
+            <span qa="local-file-size" class="whitespace-nowrap">@Format.Bytes(fileStats.LocalByteCount)</span>
+            @if (fileStats.HasRemote)
+            {
+              <span>/</span>
+              <span qa="remote-file-size">@Format.Bytes(fileStats.RemoteByteCount)</span>
+            }
+          }
+          else
+          {
+            <span class="italic text-gray">unknown</span>
+          }
+        </td>
+      </tr>
+    </table>
+  </card-body>
+</card>

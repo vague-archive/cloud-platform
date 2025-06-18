@@ -1,0 +1,25 @@
+@model SysAdmin.FileStats;
+
+<h1>Missing Local</h1>
+@foreach (var file in @Model.MissingLocal)
+{
+  <a class="link block" hx-post=@Url.SysAdminDownloadMissingFile(file)>
+    @file
+  </a>
+}
+@if (!@Model.HasMissingLocal)
+{
+  <p>Local file store looks good</p>
+}
+
+<h1>Missing Remote</h1>
+@foreach (var file in @Model.MissingRemote)
+{
+  <a class="link block" hx-post=@Url.SysAdminUploadMissingFile(file)>
+    @file
+  </a>
+}
+@if (!Model.HasMissingRemote)
+{
+  <p>Remote file store looks good</p>
+}

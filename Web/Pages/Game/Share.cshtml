@@ -1,0 +1,22 @@
+@page "/{org}/{game}/share"
+@model ShareGamePage
+@{
+  Current.Page.Title = $"Share - {Current.Game.Name}";
+}
+<div class="space-y-8">
+
+  @if (Model.HasDescription)
+  {
+    <partial name="Share/DescriptionCard" />
+  }
+
+  @if (Model.HasBranches)
+  {
+    <partial name="Share/BranchesCard" />
+  }
+  else
+  {
+    <partial name="Share/NoBranchesCard" />
+  }
+
+</div>

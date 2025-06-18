@@ -1,0 +1,14 @@
+@page "/{org}/settings"
+@model OrganizationSettingsPage
+@{
+  Current.Page.Title = $"Settings - {Current.Organization.Name}";
+}
+
+<card>
+  <card-header>
+    <card-title>Settings</card-title>
+  </card-header>
+  <card-body>
+    <partial name="Settings/Form" />
+  </card-body>
+</card>

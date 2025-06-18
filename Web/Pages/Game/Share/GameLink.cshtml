@@ -1,0 +1,30 @@
+@model Share.Branch
+@{
+  var branch = Model;
+  var deploy = RuntimeAssert.Present(branch.ActiveDeploy ?? branch.LatestDeploy);
+}
+
+@if (deploy.IsReady)
+{
+  <a class="link px-0"
+    href="@Url.ServeGame(Current.Organization, Current.Game, branch)"
+    target="_deploy">
+    @branch.Slug
+  </a>
+}
+else if (deploy.HasFailed)
+{
+  <div class="flex gap-2">
+    <span class="text-dark">@branch.Slug</span>
+    <span class="text-danger" title="@deploy.Error">
+      (deploy failed)
+    </span>
+  </div>
+}
+else if (deploy.IsDeploying)
+{
+  <div class="flex gap-2">
+    <span class="text-dark">@branch.Slug</span>
+    <span class="text-gray">(deploying)</span>
+  </div>
+}

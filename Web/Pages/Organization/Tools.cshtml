@@ -1,0 +1,7 @@
+@page "/{org}/tools"
+@model OrganizationGamesPage
+@{
+  Current.Page.Title = $"Tools - {Current.Organization.Name}";
+}
+
+<partial name="Games/List" />

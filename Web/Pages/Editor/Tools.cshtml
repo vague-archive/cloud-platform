@@ -1,0 +1,47 @@
+@page "/editor/tools"
+@model EditorToolsPage
+@{
+  Layout = "Layout/Empty";
+  Current.Page.Title = "Editor Tools";
+}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-center my-12">🛠️ Void Tools 🛠️</h1>
+
+  @if (Model.HasNoTools)
+  {
+    <card>
+      <card-header>
+        <card-title>Unavailable</card-title>
+      </card-header>
+      <card-body>
+        Sorry, there are no editor tools available at this time, please try again later.
+      </card-body>
+    </card>
+  }
+  else
+  {
+    <div class="space-y-4">
+      @foreach (var tool in Model.Tools)
+      {
+        var org = tool.Organization!;
+        var branches = tool.Branches!;
+        var single = branches.Count == 1;
+        var branch = single ? branches[0] : null;
+        var classes = "block border p-4 bg-white text-gray-800 rounded-lg shadow hover:shadow-md hover:-translate-y-1 transition-transform";
+        if (branch is not null)
+        {
+          <a href="@Url.ServeGame(org, tool, branch)" target="_tool" class="@classes">
+            <partial name="Tools/ToolCard" model="tool" />
+          </a>
+        }
+        else
+        {
+          <div class="@classes">
+            <partial name="Tools/ToolCard" model="tool"></partial>
+          </div>
+        }
+      }
+    </div>
+  }
+
+</div>

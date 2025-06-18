@@ -1,0 +1,69 @@
+@import "@vaguevoid/design-system/src/base.css";
+@import "@vaguevoid/design-system/src/components.css";
+@import "@vaguevoid/design-system/src/utilities.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*=================================================================================================
+  BASE STYLES
+=================================================================================================*/
+
+@layer base {
+  [x-cloak] {
+    display: none !important;
+  }
+
+  code.unstyled {
+    @apply border-none bg-inherit; /* TODO: backport this to design system */
+  }
+
+  .htmx-progress{
+    display: none;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .htmx-request .htmx-progress,
+  .htmx-request.htmx-progress {
+    display: inline;
+  }
+
+  .htmx-request .htmx-hide,
+  .htmx-request.htmx-hide {
+    display: none;
+  }
+}
+
+/*=================================================================================================
+  COMPONENT STYLES
+=================================================================================================*/
+
+@layer components {
+
+  .link.active {
+    @apply bg-gray-100 text-gray-600 pointer-events-none;
+  }
+
+  fx-modal card-body {
+    @apply px-4 pt-8 pb-12;
+  }
+
+  field.horizontal {
+    @apply flex flex-row items-center gap-2;
+  }
+}
+
+/*=================================================================================================
+  UTILITY STYLES
+=================================================================================================*/
+
+@layer utilities {
+}
+
+/*===============================================================================================*/

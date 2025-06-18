@@ -1,0 +1,9 @@
+@model Share.Branch;
+@{
+  var branch = Model;
+  var canCopy = Current.Game.Purpose == Account.GamePurpose.Tool;
+}
+
+<button if="@canCopy" class="btn btn-primary btn-small mr-4">
+  <clipboard content="@Url.ServeGame(Current.Organization, Current.Game, branch, full: true)" label="copy url"></clipboard>
+</button>

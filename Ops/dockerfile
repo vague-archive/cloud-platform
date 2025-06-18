@@ -1,0 +1,48 @@
+#======================
+# STAGE1: build assets
+#======================
+FROM oven/bun:1.2.8-slim as assets
+WORKDIR /app
+ARG NPM_TOKEN
+
+# cached layer for dependencies
+COPY bun.lockb bunfig.toml package.json tailwind.config.js ./
+RUN NPM_TOKEN=${NPM_TOKEN} bun install
+
+COPY ./Web ./Web
+RUN bun run build:assets
+
+#========================
+# STAGE2: build dotnet
+#========================
+FROM mcr.microsoft.com/dotnet/sdk:8.0-noble AS build
+WORKDIR /app
+
+# cached layer for dependencies
+COPY Platform.sln ./
+COPY Domain/Domain.csproj ./Domain/
+COPY Fixture/Fixture.csproj ./Fixture/
+COPY Lib/Lib.csproj ./Lib/
+COPY Task/Task.csproj ./Task/
+COPY Test/Test.csproj ./Test/
+COPY Web/Web.csproj ./Web/
+RUN dotnet restore
+
+COPY --from=assets /app/Web/wwwroot Web/wwwroot
+COPY . .
+RUN dotnet publish Web/Web.csproj -c Release -o /app/publish
+
+#========================
+# STAGE3: final image
+#========================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 as final
+WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=""
+ENV HOST=0.0.0.0
+ENV PORT=80
+ENV FILESTORE_PATH=".filestore"
+ENV KEYS_PATH=".keys"
+RUN apt-get update && apt-get install -y curl
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "Void.Platform.Web.dll"]

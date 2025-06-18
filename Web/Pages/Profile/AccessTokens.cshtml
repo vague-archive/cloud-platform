@@ -1,0 +1,109 @@
+@model ProfilePage
+@{
+  var tokens = Model.AccessTokens;
+  var generatedToken = Model.GeneratedToken;
+  var xData = new {
+    revoke = new {
+      active = false,
+      target = new {
+        tokenId = "",
+      }
+    }
+  };
+}
+
+<card qa="access-tokens"
+  x-data-from="xData"
+  hx-target="this">
+
+  <card-header>
+    <card-title>Personal Access Tokens</card-title>
+  </card-header>
+
+  <card-body>
+
+    @if (tokens.Count == 0 && generatedToken is null)
+    {
+      <div class="border-2 border-warn-100 bg-warn-50 text-large text-warn-900 p-4 mb-4">
+        You don't have any access tokens yet.
+      </div>
+    }
+
+    @if (tokens.Count > 0)
+    {
+      <div
+        x-on:revoke="revoke.target = event.srcElement.dataset; revoke.active = true"
+        hx-post
+        hx-trigger="revoke:confirmed"
+        hx-page="/Profile"
+        hx-page-handler="RevokeAccessToken"
+        hx-include="[name='tokenId']"
+        hx-disabled-elt="input, select, button">
+
+        <input type="hidden" name="tokenId" x-bind:value="revoke.target.tokenId"></input>
+
+        @foreach (var token in tokens)
+        {
+          <div class="flex gap-2 p-1 hover:bg-gray-100">
+            <div>Created: @Format.Date(token.CreatedOn)</div>
+            <div>@Format.Time(token.CreatedOn)</div>
+            <div class="flex-1">
+              ****@token.Tail
+            </div>
+            <button
+              title="revoke access token"
+              data-token-id="@token.Id"
+              x-on:click="$dispatch('revoke')">
+              <i class="iconoir-trash text-24"></i>
+            </button>
+          </div>
+        }
+
+        <fx-modal x-bind:show="revoke.active" x-on:close="revoke.active=false">
+          <card>
+            <card-header>
+              <card-title>Revoke Access Token</card-title>
+            </card-header>
+            <card-body class="p-8">
+              Are you sure you want to revoke this access token? This action cannot be undone.
+            </card-body>
+            <card-buttons>
+              <button class="btn-danger"    x-on:click="$dispatch('revoke:confirmed')">Revoke</button>
+              <button class="btn-secondary" x-on:click="$dispatch('close')">Cancel</button>
+            </card-buttons>
+          </card>
+        </fx-modal>
+
+      </div>
+    }
+
+    @if (generatedToken is not null)
+    {
+      <div qa="generated-token" class="border-2 border-warn-100 bg-warn-50 text-large text-warn-900 p-4 my-4">
+        <p>
+          Your generated token is below, copy the value now. It will no longer
+          be available once you navigate away from this page.
+        </p>
+        <div class="flex items-center gap-1">
+          <clipboard content="@generatedToken.Value"></clipboard>
+          <code class="block unstyled p-4">
+            @generatedToken.Value
+          </code>
+        </div>
+      </div>
+    }
+
+    @if (generatedToken is null)
+    {
+      <div class="mt-4">
+        <button class="btn-primary"
+          hx-post
+          hx-page="/Profile"
+          hx-page-handler="GenerateAccessToken">
+          generate token
+        </button>
+      </div>
+    }
+
+  </card-body>
+</card>

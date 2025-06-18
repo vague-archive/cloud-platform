@@ -1,0 +1,21 @@
+@page "/"
+@model HomePage
+@{
+  Current.Page.Title = "Welcome";
+}
+
+<card class="mt-8 max-w-128 mx-auto">
+  <card-header>
+    <card-title>Choose Organization</card-title>
+  </card-header>
+  <card-body>
+    <ul class="list">
+      @foreach(var org in Model.Organizations)
+      {
+        <li>
+          <a asp-page="/Organization" asp-route-org="@org.Slug" class="link">@org.Name</a>
+        </li>
+      }
+    </ul>
+  </card-body>
+</card>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <CodeCoverage>
+            <ModulePaths>
+              <Exclude>
+                <ModulePath>Fixture.dll</ModulePath>
+              </Exclude>
+            </ModulePaths>
+            <Attributes>
+              <Exclude>
+                <Attribute>FluentMigrator.Migration</Attribute>
+              </Exclude>
+            </Attributes>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

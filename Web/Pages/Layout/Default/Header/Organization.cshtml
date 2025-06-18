@@ -1,0 +1,61 @@
+@{
+  var isGamesPage = Current.Page.Matches("/Organization/Games");
+  var isToolsPage = Current.Page.Matches("/Organization/Tools");
+  var isTeamPage = Current.Page.Matches("/Organization/Team");
+  var isSettingsPage = Current.Page.Matches("/Organization/Settings");
+}
+
+<span class="flex-1 flex items-center gap-8">
+  <span class="max-w-48 truncate">
+    @Current.Organization.Name
+  </span>
+
+  <select
+    x-data
+    x-on:change="document.getElementById($event.target.value).click()"
+    class="block sm:hidden flex-1 border border-dark">
+    <option value="header-games-link" selected="@isGamesPage">Games</option>
+    <option value="header-tools-link" selected="@isToolsPage">Tools</option>
+    <option value="header-team-link" selected="@isTeamPage">Team</option>
+    <option value="header-settings-link" selected="@isSettingsPage">Settings</option>
+  </select>
+
+  <span class="hidden sm:flex gap-1">
+    <a
+      id="header-games-link"
+      asp-page="/Organization/Games"
+      asp-route-org="@Current.Organization.Slug"
+      class="link px-2">
+      games
+    </a>
+
+    <span class="link-separator"></span>
+
+    <a
+      id="header-tools-link"
+      asp-page="/Organization/Tools"
+      asp-route-org="@Current.Organization.Slug"
+      class="link px-2">
+      tools
+    </a>
+
+    <span class="link-separator"></span>
+    <a
+      id="header-team-link"
+      asp-page="/Organization/Team"
+      asp-route-org="@Current.Organization.Slug"
+      class="link px-2">
+      team
+    </a>
+
+    <span class="link-separator"></span>
+
+    <a
+      id="header-settings-link"
+      asp-page="/Organization/Settings"
+      asp-route-org="@Current.Organization.Slug"
+      class="link px-2">
+      settings
+    </a>
+  </span>
+</span>

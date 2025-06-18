@@ -1,0 +1,73 @@
+@page "/login/{provider?}/{handler?}"
+@model LoginPage
+@{
+  Layout = "Layout/Empty";
+  Current.Page.Title = "Login";
+}
+
+<div class="h-full flex flex-col justify-center">
+
+  <div if="Model.ChooseProviderMode">
+
+    <div class="max-w-64 mx-auto flex flex-col gap-2" qa="providers">
+      <a if="Model.CanGitHubAuth" href="@Url.GitHubLoginPage(@Model.Origin, @Model.Cli)" boost="false" class="btn btn-secondary">
+        <i class="iconoir-github text-24"></i> Sign in with GitHub
+      </a>
+
+      <a if="Model.CanDiscordAuth" href="@Url.DiscordLoginPage(@Model.Origin, @Model.Cli)" boost="false" class="btn btn-secondary">
+        <i class="iconoir-discord text-24"></i> Sign in with Discord
+      </a>
+
+      <a if="Model.CanPasswordAuth" href="@Url.PasswordLoginPage(@Model.Origin, @Model.Cli)" class="btn btn-secondary">
+        <i class="iconoir-password-check text-24"></i> Sign in with Password
+      </a>
+    </div>
+
+    <div if="Model.HasMessage" class="max-w-96 mx-auto border border-danger-500 bg-danger-50 p-4 mt-8">
+      <p>@Model.Message</p>
+    </div>
+
+  </div>
+
+  <card if="Model.UsePasswordMode" class="w-96 mx-auto">
+    <card-header>
+      <card-title>
+        Sign in with password
+      </card-title>
+    </card-header>
+    <card-body>
+
+      <form action="@Url.PasswordLoginPage(@Model.Origin, @Model.Cli)" method="post">
+        @Html.AntiForgeryToken()
+
+        <field>
+          <label asp-for="Command.Email">Email:</label>
+          <field-input>
+            <input asp-for="Command.Email" type="text" placeholder="name@domain.com" autofocus="@Model.AutoFocusEmail" autocomplete="off" data-1p-ignore></input>
+          </field-input>
+          <field-error for="Command.Email" model="Model"></field-error>
+        </field>
+
+        <field>
+          <label asp-for="Command.Password">Password:</label>
+          <field-input>
+            <input asp-for="Command.Password" value="@Model.Command.Password" type="password" placeholder="******" autofocus="@Model.AutoFocusPassword" autocomplete="off" data-1p-ignore></input>
+          </field-input>
+          <field-error for="Command.Password" model="Model"></field-error>
+        </field>
+
+        <form-buttons>
+          <a href="@Url.LoginPage(@Model.Origin, @Model.Cli)" class="btn-secondary" type="button">
+            Cancel
+          </a>
+          <button class="btn-primary" type="submit">
+            Submit
+          </button>
+        </form-buttons>
+
+      </form>
+
+    </card-body>
+  </card>
+
+</div>

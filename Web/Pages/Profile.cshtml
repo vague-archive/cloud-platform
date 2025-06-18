@@ -1,0 +1,10 @@
+@page "/profile"
+@model ProfilePage
+@{
+  Current.Page.Title = "Profile";
+}
+
+<div class="space-y-8">
+  <partial name="Profile/MyProfile" />
+  <partial name="Profile/AccessTokens" />
+</div>

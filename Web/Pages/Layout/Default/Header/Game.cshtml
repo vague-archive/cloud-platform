@@ -1,0 +1,48 @@
+@{
+  var isArchived = Current.Game.IsArchived;
+  var isSharePage = Current.Page.Matches("/Game/Share");
+  var isSettingsPage = Current.Page.Matches("/Game/Settings");
+}
+
+<span class="flex-1 flex items-center gap-8">
+  <span class="max-w-48 truncate">
+    @Current.Game.Name
+  </span>
+
+  <select
+    x-data
+    x-on:change="document.getElementById($event.target.value).click()"
+    class="block sm:hidden flex-1 border border-dark">
+    @if (!isArchived)
+    {
+      <option value="header-share-link" selected="@isSharePage">Share</option>
+    }
+    <option value="header-settings-link" selected="@isSettingsPage">Settings</option>
+  </select>
+
+  <span class="hidden sm:flex gap-1">
+
+    @if (!isArchived)
+    {
+      <a
+        id="header-share-link"
+        asp-page="/Game/Share"
+        asp-route-org="@Current.Organization.Slug"
+        asp-route-game="@Current.Game.Slug"
+        class="link px-2">
+        share
+      </a>
+      <span class="link-separator"></span>
+    }
+
+    <a
+      id="header-settings-link"
+      asp-page="/Game/Settings"
+      asp-route-org="@Current.Organization.Slug"
+      asp-route-game="@Current.Game.Slug"
+      class="link px-2">
+      settings
+    </a>
+
+  </span>
+</span>
